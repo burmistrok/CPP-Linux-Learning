@@ -1,0 +1,4 @@
+*******************************************************************************************************
+Executing target 'all' for project 'ProjectSample'
+g++ -o ProjectSample ./build/test.o ./build/main.o    
+Finished executing the target 'all' for project 'ProjectSample'

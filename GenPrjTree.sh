@@ -3,7 +3,7 @@
 if [ $# -ge 2 ]
 then
  echo "Usage: $0"
- echo "Only project name should be transmited like paramete"
+ echo "Only project name should be transmited like parameter"
  exit 1
 fi
 

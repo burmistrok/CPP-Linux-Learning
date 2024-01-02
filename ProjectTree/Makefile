@@ -2,9 +2,15 @@ PRJ_NAME = ProjectSample
 CC = g++
 
 PRJ_SOURCE_CODE := ./src
-PRJ_OUTPUT_DIR  := ./misc
-PRJ_INCS_DIR  := ./include/
-INCLUDES        += -I${PRJ_INCS_DIR}
+PRJ_OUTPUT_DIR  := ./build
+PRJ_INCS_DIR  := /include/
+CURRENT_DIR     := $(shell pwd)
+INCLUDES        += -I${CURRENT_DIR}${PRJ_INCS_DIR}
+
+ ### Compilation Flags ###
+DEBUG_LEVEL         := 3
+OPTIMIZATION_LEVEL  := 0
+CFLAGS           := -O$(OPTIMIZATION_LEVEL) -g$(DEBUG_LEVEL) -Wall -std=c++17 
 
 ### Derived Variables ###
 CPP_SRC_FILES   := $(shell find -L $(PRJ_SOURCE_CODE) -type f -name "*.cpp"  -print)                # All C++ files
@@ -12,7 +18,7 @@ CPP_OBJECTS     := $(patsubst $(PRJ_SOURCE_CODE)/%.cpp,$(PRJ_OUTPUT_DIR)/%.o, $(
 
 ### Targets ###
 all : $(CPP_OBJECTS)
-	@echo "*******************************************************************************************************\r\n"
+	@echo "*******************************************************************************************************"
 	@echo "Executing target '$@' for project '${PRJ_NAME}'"
 	$(CC) -o $(PRJ_NAME) $(CPP_OBJECTS)
 	@echo "Finished executing the target '$@' for project '${PRJ_NAME}'"
@@ -20,9 +26,9 @@ all : $(CPP_OBJECTS)
 
 # Generic C/C++ files build target (Object generation)
 ${PRJ_OUTPUT_DIR}/%.o : $(PRJ_SOURCE_CODE)/%.cpp
-	@echo "*******************************************************************************************************\r\n"
+	@echo "*******************************************************************************************************"
 	@echo "Building '$<' for project '${PRJ_NAME}'"
-	$(CC) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 	@echo "Built '$<' for project '${PRJ_NAME}'"
 
 clean :

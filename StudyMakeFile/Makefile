@@ -1,11 +1,15 @@
 
-
+CC = g++
+RESULTPRG = PrintMsg
 
 target : main.o myLib.o
-	g++ -o PrintMsg main.o myLib.o
+	$(CC) -o $(RESULTPRG) main.o myLib.o
 
 main.o : main.cpp
-	g++ -c main.cpp
+	$(CC) -c main.cpp
 
 myLib.o : myLib.cpp myLib.h
-	g++ -c myLib.cpp
+	$(CC) -c myLib.cpp
+	
+clean:
+	rm *.o $(RESULTPRG)

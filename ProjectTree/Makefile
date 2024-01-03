@@ -7,8 +7,6 @@ PRJ_INCS_DIR  := /include/
 CURRENT_DIR     := $(shell pwd)
 INCLUDES        += -I${CURRENT_DIR}${PRJ_INCS_DIR}
 
-WORKAROUNDFORGIO = -I/usr/include/glib-2.0/gio
-
  ### Compilation Flags ###
 DEBUG_LEVEL         := 3
 OPTIMIZATION_LEVEL  := 0
@@ -23,7 +21,7 @@ CPP_OBJECTS     := $(patsubst $(PRJ_SOURCE_CODE)/%.cpp,$(PRJ_OUTPUT_DIR)/%.o, $(
 all : $(CPP_OBJECTS)
 	@echo "*******************************************************************************************************"
 	@echo "Executing target '$@' for project '${PRJ_NAME}'"
-	$(CC) -o $(PRJ_NAME) $(CPP_OBJECTS) $(LDFLAGS)
+	@$(CC) -o $(PRJ_NAME) $(CPP_OBJECTS) $(LDFLAGS)
 	@echo "Finished executing the target '$@' for project '${PRJ_NAME}'"
 
 
@@ -31,7 +29,7 @@ all : $(CPP_OBJECTS)
 ${PRJ_OUTPUT_DIR}/%.o : $(PRJ_SOURCE_CODE)/%.cpp
 	@echo "*******************************************************************************************************"
 	@echo "Building '$<' for project '${PRJ_NAME}'"
-	$(CC) $(CFLAGS) $(INCLUDES) $(WORKAROUNDFORGIO) $(LDFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) $(INCLUDES) $(LDFLAGS) -c $< -o $@
 	@echo "Built '$<' for project '${PRJ_NAME}'"
 
 clean :

@@ -11,7 +11,7 @@
 
 #include"glib.h"
 #include"glib-object.h"
-#include"gio.h"
+#include"gio/gio.h"
 
    #ifdef __cplusplus
       } // extern "C"

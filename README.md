@@ -8,3 +8,4 @@ https://medium.com/@caglayandokme/the-ultimate-makefile-for-c-projects-part-1-ap
 https://www.youtube.com/watch?v=9PeEYcYHHkM
 https://github.com/bratsche/glib
 https://docs.gtk.org/
+https://www.youtube.com/watch?v=Mqb2dVRe0uo&list=PLfqABt5AS4FkW5mOn2Tn9ZZLLDwA3kZUY

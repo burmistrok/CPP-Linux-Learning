@@ -1,4 +1,4 @@
-PRJ_NAME = ProjectSample
+PRJ_NAME = ProjectSample.elf
 CC = g++
 
 PRJ_SOURCE_CODE := ./src

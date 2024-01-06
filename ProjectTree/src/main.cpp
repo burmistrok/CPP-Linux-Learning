@@ -4,50 +4,40 @@
 
 #include"test.hpp"
 
-#define LOAD		(1000u)
 
-
-uint32_t SharedResurse = 0ul;
-
-void Thread1_Func(void);
-
-GMutex *mutex;
-
-int main()
+int main(int argc, char *argv[])
 {
 	uint32_t result;
 	std::cout << "Hello, Student" << std::endl;
 	result = CalcSumm(50, 40);
 	std::cout << "Sum is: " << result << std::endl;
 
+	gint child_stdout, child_stderr;
+	GPid child_pid;
+	g_autoptr(GError) error = NULL;
+	const gchar * const largv[] = { "\./PrintMsg.elf", NULL };
+	std::cout << "Process " << getpid() << " started" << std::endl;
 
 
-	mutex = g_new(GMutex, 1);
-	g_mutex_init(mutex);
-	GThread * Thread1 = g_thread_new(NULL, (GThreadFunc) Thread1_Func, NULL);
-
-	for(uint32_t i = 0u; i < LOAD; i++)
+	if( g_spawn_async(NULL, (gchar**)largv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &child_pid, &error))
 	{
-		g_mutex_lock(mutex);
-		SharedResurse++;
-		std::cout << "MainThread:" << SharedResurse << std::endl;
-		g_mutex_unlock(mutex);
+		std::cout << "New process " << child_pid << " created successfully" << std::endl;
+
+		std::cout << "The No of arguments is " << argc << std::endl;
+		for(int argInx = 0u; argInx < argc; argInx++)
+		{
+			std::cout << "The argument " << argInx <<" is " << argv[argInx] << std::endl;
+		}
+
+		return 0;
 	}
-	
-	g_thread_join(Thread1);
+	else
+	{
 
-	return 0;
-}
-
-
-void Thread1_Func(void)
-{
-
-	for(uint32_t i = 0u; i < LOAD; i++)
-	{		
-		g_mutex_lock(mutex);
-		SharedResurse++;
-		std::cout << "Thread1:" << SharedResurse << std::endl;
-		g_mutex_unlock(mutex);
+		if (error != NULL)
+		{
+			g_error ("Spawning child failed: %s", error->message);
+			return 1;
+		}
 	}
 }

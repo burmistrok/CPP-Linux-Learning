@@ -7,37 +7,23 @@
 
 int main(int argc, char *argv[])
 {
-	uint32_t result;
-	std::cout << "Hello, Student" << std::endl;
-	result = CalcSumm(50, 40);
-	std::cout << "Sum is: " << result << std::endl;
-
-	gint child_stdout, child_stderr;
-	GPid child_pid;
-	g_autoptr(GError) error = NULL;
+	GSubprocess * childProcess = NULL;
+	GError * lerror = NULL;
 	const gchar * const largv[] = { "\./PrintMsg.elf", NULL };
+	GSubprocessLauncher *handlelaunch = NULL;
+
 	std::cout << "Process " << getpid() << " started" << std::endl;
 
 
-	if( g_spawn_async(NULL, (gchar**)largv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &child_pid, &error))
+	handlelaunch = g_subprocess_launcher_new((GSubprocessFlags)(G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_MERGE));
+
+	std::cout << "g_subprocess_launcher_new passed "<< std::endl;
+
+	childProcess = g_subprocess_launcher_spawn ( handlelaunch, &lerror, (const gchar*)largv, NULL );
+
+	if(lerror != NULL)
 	{
-		std::cout << "New process " << child_pid << " created successfully" << std::endl;
-
-		std::cout << "The No of arguments is " << argc << std::endl;
-		for(int argInx = 0u; argInx < argc; argInx++)
-		{
-			std::cout << "The argument " << argInx <<" is " << argv[argInx] << std::endl;
-		}
-
-		return 0;
-	}
-	else
-	{
-
-		if (error != NULL)
-		{
-			g_error ("Spawning child failed: %s", error->message);
-			return 1;
-		}
+		g_error ("Spawning child failed: %s", lerror->message);
+		return 1;
 	}
 }

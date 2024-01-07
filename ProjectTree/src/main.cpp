@@ -10,6 +10,7 @@ void Thread1_Func( gpointer data );
 GMutex *mutex;
 
 
+#define CHILD_KEY "CHILD"
 typedef enum{
 	MAIN_PROCESS = 0,
 	CHILD_PROCESS,
@@ -19,10 +20,10 @@ typedef enum{
 	UNSUPORTED_GOAL
 }TE_GOAL;
 
-const gchar ua8_ChildProcess[] = "CHILD";
+const gchar ua8_ChildProcess[] = CHILD_KEY;
 const gchar ua8_Thread[] = "THREADS";
 const gchar ua8_ThreadMx[] = "THREADS_MUTEX";
-void MainProcess(void);
+void MainProcess(char **argv );
 void ChildProcess(void);
 void TestMultiThread(uint8_t useMutex);
 
@@ -32,10 +33,9 @@ int main( int argc, char **argv )
 {
 
 	int RetVal = 0;
-	std::cout << "The argc is: " << argc <<std::endl;
 	if(1 == argc)
 	{/* Main process */
-		MainProcess();
+		MainProcess(argv);
 	}
 	else
 	{
@@ -67,18 +67,39 @@ int main( int argc, char **argv )
 			RetVal = 1;
 		}
 	}
-
+	std::cout << "Exit code from " << getpid() <<" process is "<< RetVal << std::endl;
 	return RetVal;
 }
 
-void MainProcess(void)
+void MainProcess(char **argv )
 {
-	std::cout << "Main process was called." << std::endl;
+	gchar * largv[3] = 
+	{
+		(gchar * )argv[0],
+		(gchar*)CHILD_KEY,
+		NULL
+	};
+	GPid childPid;
+	GError * lerror = NULL;
+	GSpawnFlags lflags = (GSpawnFlags)(G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR | G_SPAWN_CHILD_INHERITS_STDIN);
+	std::cout << "Main " << getpid() <<" process was called" << std::endl;
+
+	if( g_spawn_async (NULL , largv, NULL, lflags, NULL, NULL, &childPid, &lerror) )
+	{
+		std::cout << "Child process "<< childPid << " successfully created." << std::endl;
+	}
+	else
+	{
+		if(lerror != NULL)
+		{
+			g_error ("Spawning child failed: %s", lerror->message);
+		}
+	}
 }
 
 void ChildProcess(void)
 {
-	std::cout << "Child process was called." << std::endl;
+	std::cout << "Child process " << getpid() << " was called." << std::endl;
 }
 
 void TestMultiThread(uint8_t useMutex)

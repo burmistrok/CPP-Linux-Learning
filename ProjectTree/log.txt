@@ -1,0 +1,71 @@
+commit 7714600c2cdef0a58fcd89ef7d2575e353bd9a82
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Sun Jan 7 00:58:36 2024 +0200
+
+    Just an other experiment to create new process
+
+commit aa55e0da170d821b1afa33b1ccfed49c00dbba4e
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Sat Jan 6 23:16:58 2024 +0200
+
+    Just backup of some experiment which create a lot of processes(Do not lunch it)
+
+commit 7372a7388608c327f89fed25c99b35df2dc87b6b
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Sat Jan 6 06:44:14 2024 +0200
+
+    Add a git ignore for temp files
+
+commit 2dd2cbe402e08925a3d210ff40deab66aa9c6355
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Sat Jan 6 00:08:46 2024 +0200
+
+    Back up just some experiments
+
+commit 4eefc9cd222859ddae533d15e79a08c6c11b9ce6
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Thu Jan 4 03:57:31 2024 +0200
+
+    Add std method to create process(fork was used)
+
+commit 0644a0c6fc92de3ea1f67229b38bc5fb5c8c0c47
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Wed Jan 3 13:46:41 2024 +0200
+
+    Remove workaround for gio.h from makefile
+
+commit 083796aa6e2ad8b1786d905afd5be7ad4f85f70b
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Wed Jan 3 09:33:16 2024 +0200
+
+    Add a thread and mutex
+
+commit 61b25c5fd666c5e96f9359eb49ba4bc1992f3073
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Tue Jan 2 19:58:38 2024 +0200
+
+    Update logic for build
+
+commit 294720ecd8014b9975d7edd9dc82ea12bcd46d59
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Tue Jan 2 18:22:35 2024 +0200
+
+    Add makefile to achieve project reqs
+
+commit 3da15993e49dd31a3bdf77105dfd26667e25e391
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Sat Dec 30 20:17:06 2023 +0200
+
+    Add simple MakeFile
+
+commit 57a3b7d252016b9b94d68b1521dcabe3cb720190
+Author: Oleg Burmistr <ok.burmistr@gmail.com>
+Date:   Fri Dec 29 08:32:21 2023 +0200
+
+    Add shell script
+
+commit 829afab4fd45158f1bc4fe40cdd13c7fffdaa576
+Author: burmistrok <57749787+burmistrok@users.noreply.github.com>
+Date:   Fri Dec 29 08:25:56 2023 +0200
+
+    Initial commit

@@ -1,8 +1,5 @@
+Executing target 'all' for project 'ProjectSample.elf'
 *******************************************************************************************************
-Building 'src/main.cpp' for project 'ProjectSample'
-g++ -O0 -g3 -Wall -std=c++17 -I/home/ok/CPP_Projects/FirstProject/CPP-Linux-Learning/ProjectTree/include/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0  -c src/main.cpp -o build/main.o
-Built 'src/main.cpp' for project 'ProjectSample'
+g++ -o ProjectSample.elf ./build/main.o     -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libmount -I/usr/include/blkid -I/usr/include/gio-unix-2.0 -pthread -lgio-2.0 -lgobject-2.0 -lglib-2.0 
 *******************************************************************************************************
-Executing target 'all' for project 'ProjectSample'
-g++ -o ProjectSample ./build/test.o ./build/main.o     -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0 
-Finished executing the target 'all' for project 'ProjectSample'
+Finished executing the target 'all' for project 'ProjectSample.elf'

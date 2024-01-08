@@ -1,20 +1,17 @@
 #include<iostream>
 #include <cstdint>
-
-
 #include"glib.hpp"
 
-#define LOAD		(1000u)
-uint32_t SharedResurse = 0ul;
-void Thread1_Func( gpointer data );
-GMutex *mutex;
+/*Defines*/
+#define LOAD					(1000u)
+#define LOCAL_BUFFER_SIZE		(1000u)
+#define CUSTMPORT 				(9001u)
+#define CHILD_KEY 				"CHILD"
+#define HOSTNAME 				"127.0.0.1"
+#define MSG_TO_SEND 			"Hello from 2024, update!!!"
 
-#define HOSTNAME "127.0.0.1"
-#define UNIXPORT (9000u)
+/* User-defined data type  */
 
-
-
-#define CHILD_KEY "CHILD"
 typedef enum{
 	MAIN_PROCESS = 0,
 	CHILD_PROCESS,
@@ -24,18 +21,63 @@ typedef enum{
 	UNSUPORTED_GOAL
 }TE_GOAL;
 
-const gchar ua8_ChildProcess[] = CHILD_KEY;
-const gchar ua8_Thread[] = "THREADS";
-const gchar ua8_ThreadMx[] = "THREADS_MUTEX";
+typedef enum{
+	NONE = 0,
+	SERVER_SIDE,
+	CLIENT_SIDE
+}TE_CONNECTION;
+
+typedef struct{
+	TE_CONNECTION conectionType;
+	GSocketConnection* connectionPtr;
+	GInputStream* istreamPtr;
+	GOutputStream* ostreamPtr;
+}TS_CONNECITON;
+
+typedef struct{
+	GPid childPid;
+	TS_CONNECITON* Connection;
+}TS_PROCESS_CFG;
+
+/*Functions*/
 void MainProcess(char **argv );
 void ChildProcess(void);
 void TestMultiThread(uint8_t useMutex);
-
 TE_GOAL FindGoal(const char* Flag);
+void Thread1_Func( gpointer data );
+gboolean CreateChildProcess(char **argv, GPid* cPidPtr);
+gboolean OpenSocket(TS_CONNECITON* connPtr);
+gboolean WriteToSocket(GOutputStream* ostreamptr, guint8* data, gsize size);
+void ReadFromSocket(GInputStream* istreamptr, guint8* data, gsize size, gsize* readBytes);
+GSocketConnection* CreateServer(void);
+GSocketConnection* Connect2Server(void);
+
+/* Variabiles */
+const gchar ua8_ChildProcess[] = CHILD_KEY;
+const gchar ua8_Thread[] = "THREADS";
+const gchar ua8_ThreadMx[] = "THREADS_MUTEX";
+uint32_t SharedResurse = 0ul;
+GMutex *mutex;
+
+TS_CONNECITON serverConn = 
+{
+	.conectionType = SERVER_SIDE,
+};
+
+TS_CONNECITON s_clientConn = 
+{
+	.conectionType = CLIENT_SIDE,
+};
+
+
+TS_PROCESS_CFG MainProcessCfg = 
+{
+	.Connection = &s_clientConn,
+};
+
 
 int main( int argc, char **argv )
 {
-
 	int RetVal = 0;
 	if(1 == argc)
 	{/* Main process */
@@ -77,70 +119,51 @@ int main( int argc, char **argv )
 
 void MainProcess(char **argv )
 {
-	gchar * largv[3] = 
-	{
-		(gchar * )argv[0],
-		(gchar*)CHILD_KEY,
-		NULL
-	};
-	GPid childPid;
-	GError * lerror = NULL;
-	GSpawnFlags lflags = (GSpawnFlags)(G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR | G_SPAWN_CHILD_INHERITS_STDIN);
+
 	std::cout << "Main " << getpid() <<" process was called" << std::endl;
 
-	if( g_spawn_async (NULL , largv, NULL, lflags, NULL, NULL, &childPid, &lerror) )
+	if( CreateChildProcess(argv, &MainProcessCfg.childPid ))
 	{
-		std::cout << "Child process "<< childPid << " successfully created." << std::endl;
+		std::cout << "Child process "<< MainProcessCfg.childPid << " successfully created." << std::endl;
 	}
-	else
+
+	if( OpenSocket(&s_clientConn) )
 	{
-		if(lerror != NULL)
+		std::cout << "Conection created successfully, in " << getpid() <<" process." << std::endl;
+
+		GString* Msg = g_string_new((gchar*)MSG_TO_SEND);
+		if (WriteToSocket(s_clientConn.ostreamPtr, (guint8*)Msg->str, (gsize)Msg->len))
 		{
-			g_error ("Spawning child failed: %s", lerror->message);
+			std::cout << "Client sent msg successfully" << std::endl;
 		}
 	}
 
-	GSocket* prSocketPtr;
-	GSocketConnectable *address;
-	GSocketAddressEnumerator *enumerator;
-	g_autoptr(GError) e = NULL;
-	g_autoptr(GSocketAddress) socket_address;
 
-	g_clear_error (&lerror);
-	prSocketPtr = g_socket_new ( G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, &lerror );
-	if(lerror != NULL)
-	{
-		g_error ("Creating new socket failed: %s", lerror->message);
-	}
-	else
-	{
-		std::cout << "Parental socket created succesfully" << std::endl;
-		address = g_network_address_new ((gchar *)HOSTNAME, UNIXPORT);
-		std::cout << "Parental address created succesfully" << std::endl;
-		enumerator = g_socket_connectable_enumerate (address);
-		std::cout << "Parental enumerator created succesfully" << std::endl;
-        socket_address = g_socket_address_enumerator_next (enumerator, NULL, &e);
-		std::cout << "Parental socket address created succesfully" << std::endl;
-
-		g_clear_error (&lerror);
-		if( g_socket_connect ( prSocketPtr, socket_address, NULL, &lerror) )
-		{
-			std::cout << "Conected to parental socket succesfully" << std::endl;
-		}
-		else
-		{
-			if(lerror != NULL)
-			{
-				g_error ("Connection to parental socket failed: %s", lerror->message);
-			}
-		}
-	}
-
+	g_object_unref(s_clientConn.connectionPtr);
 }
 
 void ChildProcess(void)
 {
 	std::cout << "Child process " << getpid() << " was called." << std::endl;
+
+	if(OpenSocket(&serverConn))
+	{
+		std::cout << "Conection created successfully, in " << getpid() <<" process." << std::endl;
+
+		guint8 receivedMsg[LOCAL_BUFFER_SIZE];
+		gsize receivedBytes = 0;
+		ReadFromSocket(serverConn.istreamPtr , receivedMsg, LOCAL_BUFFER_SIZE, &receivedBytes);
+
+		if(0 != receivedBytes)
+		{
+			std::cout << "Message:" << std::endl << receivedMsg << std::endl <<" received." << std::endl;
+		}
+
+	}
+
+
+	g_object_unref(serverConn.connectionPtr);
+
 }
 
 void TestMultiThread(uint8_t useMutex)
@@ -216,4 +239,155 @@ TE_GOAL FindGoal(const char* Flag)
 
 	return retVal;
 
+}
+
+gboolean OpenSocket(TS_CONNECITON* connPtr)
+{
+
+	gboolean RetVal = FALSE;
+	GSocketConnection* lConectionPtr = NULL;
+
+	if( SERVER_SIDE == connPtr->conectionType )
+	{
+		lConectionPtr = CreateServer();
+	}
+	else if ( CLIENT_SIDE == connPtr->conectionType )
+	{
+		lConectionPtr = Connect2Server();
+	}	
+	else{
+		g_error ("Connection type is not defined");
+	}
+
+	if(NULL != lConectionPtr )
+	{
+		connPtr->connectionPtr = lConectionPtr;
+		connPtr->istreamPtr = g_io_stream_get_input_stream(G_IO_STREAM(lConectionPtr));
+		connPtr->ostreamPtr = g_io_stream_get_output_stream(G_IO_STREAM(lConectionPtr));
+		RetVal = TRUE;
+	}
+	return RetVal;
+}
+
+gboolean CreateChildProcess(char **argv, GPid* cPidPtr)
+{
+	gboolean RetVal = FALSE;
+
+	gchar * largv[3] = 
+	{
+		(gchar * )argv[0],
+		(gchar*)CHILD_KEY,
+		NULL
+	};
+	GPid childPid;
+	GError * lerror = NULL;
+	GSpawnFlags lflags = (GSpawnFlags)(G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR | G_SPAWN_CHILD_INHERITS_STDIN);
+
+	if( g_spawn_async (NULL , largv, NULL, lflags, NULL, NULL, &childPid, &lerror) )
+	{
+
+		RetVal = TRUE;
+		*cPidPtr = childPid;
+	}
+	else
+	{
+		if(lerror != NULL)
+		{
+			g_error ("Spawning child failed: %s", lerror->message);
+		}
+	}
+
+
+	return RetVal;
+}
+
+
+GSocketConnection* CreateServer(void)
+{
+	GError * lerror = NULL;
+	GSocketConnection* new_connectionPtr = NULL;
+	GSocketListener *lListnSocketPtr = g_socket_listener_new();
+
+	if(NULL == lListnSocketPtr)
+	{
+		g_error ("Could not create server socket.");
+	}
+	else
+	{
+		g_clear_error (&lerror);
+		g_socket_listener_add_inet_port(lListnSocketPtr, (guint16 )CUSTMPORT, NULL, &lerror);
+		if(lerror != NULL)
+		{
+			g_error ("Could not add listner: %s", lerror->message);
+		}
+		else
+		{
+			g_clear_error (&lerror);
+			new_connectionPtr = g_socket_listener_accept(lListnSocketPtr, NULL, NULL, &lerror);
+			if(lerror != NULL)
+			{
+				g_error ("Could not create new conection: %s", lerror->message);
+				new_connectionPtr = NULL;
+			}
+		}
+	}
+	g_socket_listener_close(lListnSocketPtr);
+	g_object_unref (lListnSocketPtr);
+
+	return new_connectionPtr;
+}
+
+GSocketConnection* Connect2Server(void)
+{
+	GError * lerror = NULL;
+	GSocketConnection* new_connectionPtr = NULL;
+	GSocketClient* lClientSocketPtr  = g_socket_client_new ();
+
+	new_connectionPtr = g_socket_client_connect_to_host ( lClientSocketPtr, HOSTNAME, CUSTMPORT , NULL,  &lerror);
+	if(lerror != NULL)
+	{
+		g_error ("Could not add listner: %s", lerror->message);
+		new_connectionPtr = NULL;
+	}
+
+	g_object_unref (lClientSocketPtr);
+	return new_connectionPtr;
+}
+
+gboolean WriteToSocket(GOutputStream* ostreamptr, guint8* data, gsize  size)
+{
+	gboolean retVal = FALSE;
+	GError * lerror = NULL;
+	gssize writtenbytes = g_output_stream_write (ostreamptr, data, size, NULL, &lerror);
+
+	if(lerror != NULL)
+	{
+		g_error ("Error occured during write: %s", lerror->message);
+	}
+	else
+	{
+		if( (0 < writtenbytes) && ((gsize)writtenbytes == size) )
+		{
+			retVal = TRUE;
+		}
+	}
+
+	return retVal;
+}
+
+void ReadFromSocket(GInputStream* istreamptr, guint8* data, gsize size, gsize* readBytes)
+{
+	GError * lerror = NULL;
+	gssize lreadBytes = g_input_stream_read(istreamptr, data, size, NULL, &lerror);
+	if(lerror != NULL)
+	{
+		g_error ("Error occured during reading: %s", lerror->message);
+	}
+	else
+	{
+		if(0 < lreadBytes)
+		{
+			*readBytes = (gsize)lreadBytes;
+		}
+	}
 }

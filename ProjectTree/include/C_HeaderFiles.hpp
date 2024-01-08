@@ -1,13 +1,12 @@
 
 
-#ifndef GLIB_HPP
-#define GLIB_HPP
+#ifndef C_HEADERFILES_HPP
+#define C_HEADERFILES_HPP
 
 #ifdef __cplusplus
    extern "C"
    {
 #endif
-
 
 #include"glib.h"
 #include"glib-object.h"
@@ -19,4 +18,4 @@
 
 
 
-#endif /* GLIB_HPP */
+#endif /* C_HEADERFILES_HPP */

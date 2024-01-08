@@ -1,8 +1,8 @@
 #include<iostream>
 #include <cstdint>
-#include"glib.hpp"
+#include"C_HeaderFiles.hpp"
 
-/*Defines*/
+/* Defines */
 #define LOAD					(1000u)
 #define LOCAL_BUFFER_SIZE		(1000u)
 #define CUSTMPORT 				(9001u)
@@ -129,7 +129,7 @@ void MainProcess(char **argv )
 
 	if( OpenSocket(&s_clientConn) )
 	{
-		std::cout << "Conection created successfully, in " << getpid() <<" process." << std::endl;
+		std::cout << "Conection created successfully, in " << getpid() <<" process(main)." << std::endl;
 
 		GString* Msg = g_string_new((gchar*)MSG_TO_SEND);
 		if (WriteToSocket(s_clientConn.ostreamPtr, (guint8*)Msg->str, (gsize)Msg->len))
@@ -137,8 +137,6 @@ void MainProcess(char **argv )
 			std::cout << "Client sent msg successfully" << std::endl;
 		}
 	}
-
-
 	g_object_unref(s_clientConn.connectionPtr);
 }
 
@@ -148,7 +146,7 @@ void ChildProcess(void)
 
 	if(OpenSocket(&serverConn))
 	{
-		std::cout << "Conection created successfully, in " << getpid() <<" process." << std::endl;
+		std::cout << "Conection created successfully, in " << getpid() <<" process(child)." << std::endl;
 
 		guint8 receivedMsg[LOCAL_BUFFER_SIZE];
 		gsize receivedBytes = 0;
@@ -160,10 +158,7 @@ void ChildProcess(void)
 		}
 
 	}
-
-
 	g_object_unref(serverConn.connectionPtr);
-
 }
 
 void TestMultiThread(uint8_t useMutex)
@@ -285,7 +280,6 @@ gboolean CreateChildProcess(char **argv, GPid* cPidPtr)
 
 	if( g_spawn_async (NULL , largv, NULL, lflags, NULL, NULL, &childPid, &lerror) )
 	{
-
 		RetVal = TRUE;
 		*cPidPtr = childPid;
 	}
@@ -296,8 +290,6 @@ gboolean CreateChildProcess(char **argv, GPid* cPidPtr)
 			g_error ("Spawning child failed: %s", lerror->message);
 		}
 	}
-
-
 	return RetVal;
 }
 
@@ -316,6 +308,7 @@ GSocketConnection* CreateServer(void)
 	{
 		g_clear_error (&lerror);
 		g_socket_listener_add_inet_port(lListnSocketPtr, (guint16 )CUSTMPORT, NULL, &lerror);
+
 		if(lerror != NULL)
 		{
 			g_error ("Could not add listner: %s", lerror->message);
@@ -328,6 +321,8 @@ GSocketConnection* CreateServer(void)
 			{
 				g_error ("Could not create new conection: %s", lerror->message);
 				new_connectionPtr = NULL;
+				g_socket_listener_close(lListnSocketPtr);
+				g_object_unref (lListnSocketPtr);
 			}
 		}
 	}
@@ -341,13 +336,14 @@ GSocketConnection* Connect2Server(void)
 {
 	GError * lerror = NULL;
 	GSocketConnection* new_connectionPtr = NULL;
+	sleep(1);
 	GSocketClient* lClientSocketPtr  = g_socket_client_new ();
-
 	new_connectionPtr = g_socket_client_connect_to_host ( lClientSocketPtr, HOSTNAME, CUSTMPORT , NULL,  &lerror);
 	if(lerror != NULL)
 	{
-		g_error ("Could not add listner: %s", lerror->message);
+		g_error ("Could not connect to host: %s", lerror->message);
 		new_connectionPtr = NULL;
+		g_object_unref (lClientSocketPtr);
 	}
 
 	g_object_unref (lClientSocketPtr);

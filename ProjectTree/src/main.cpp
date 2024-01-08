@@ -9,6 +9,10 @@ uint32_t SharedResurse = 0ul;
 void Thread1_Func( gpointer data );
 GMutex *mutex;
 
+#define HOSTNAME "127.0.0.1"
+#define UNIXPORT (9000u)
+
+
 
 #define CHILD_KEY "CHILD"
 typedef enum{
@@ -95,6 +99,43 @@ void MainProcess(char **argv )
 			g_error ("Spawning child failed: %s", lerror->message);
 		}
 	}
+
+	GSocket* prSocketPtr;
+	GSocketConnectable *address;
+	GSocketAddressEnumerator *enumerator;
+	g_autoptr(GError) e = NULL;
+	g_autoptr(GSocketAddress) socket_address;
+
+	g_clear_error (&lerror);
+	prSocketPtr = g_socket_new ( G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, &lerror );
+	if(lerror != NULL)
+	{
+		g_error ("Creating new socket failed: %s", lerror->message);
+	}
+	else
+	{
+		std::cout << "Parental socket created succesfully" << std::endl;
+		address = g_network_address_new ((gchar *)HOSTNAME, UNIXPORT);
+		std::cout << "Parental address created succesfully" << std::endl;
+		enumerator = g_socket_connectable_enumerate (address);
+		std::cout << "Parental enumerator created succesfully" << std::endl;
+        socket_address = g_socket_address_enumerator_next (enumerator, NULL, &e);
+		std::cout << "Parental socket address created succesfully" << std::endl;
+
+		g_clear_error (&lerror);
+		if( g_socket_connect ( prSocketPtr, socket_address, NULL, &lerror) )
+		{
+			std::cout << "Conected to parental socket succesfully" << std::endl;
+		}
+		else
+		{
+			if(lerror != NULL)
+			{
+				g_error ("Connection to parental socket failed: %s", lerror->message);
+			}
+		}
+	}
+
 }
 
 void ChildProcess(void)

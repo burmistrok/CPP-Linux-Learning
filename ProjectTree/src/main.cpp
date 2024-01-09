@@ -5,10 +5,10 @@
 /* Defines */
 #define LOAD					(1000u)
 #define LOCAL_BUFFER_SIZE		(1000u)
-#define CUSTMPORT 				(9001u)
+#define CUSTMPORT 				(9000u)
 #define CHILD_KEY 				"CHILD"
 #define HOSTNAME 				"127.0.0.1"
-#define MSG_TO_SEND 			"Hello from 2024, update!!!"
+#define MSG_TO_SEND 			"Hello from 2024, Happy new year!!! Update the status. Let's go on holidays to The Universitare Psychiatrische Dienste (UPD)."
 
 /* User-defined data type  */
 
@@ -51,6 +51,11 @@ gboolean WriteToSocket(GOutputStream* ostreamptr, guint8* data, gsize size);
 void ReadFromSocket(GInputStream* istreamptr, guint8* data, gsize size, gsize* readBytes);
 GSocketConnection* CreateServer(void);
 GSocketConnection* Connect2Server(void);
+void ChildBackend(void);
+void ParentBackend(void);
+guint CountStrinStr(GString* str, gchar* find);
+
+
 
 /* Variabiles */
 const gchar ua8_ChildProcess[] = CHILD_KEY;
@@ -131,11 +136,7 @@ void MainProcess(char **argv )
 	{
 		std::cout << "Conection created successfully, in " << getpid() <<" process(main)." << std::endl;
 
-		GString* Msg = g_string_new((gchar*)MSG_TO_SEND);
-		if (WriteToSocket(s_clientConn.ostreamPtr, (guint8*)Msg->str, (gsize)Msg->len))
-		{
-			std::cout << "Client sent msg successfully" << std::endl;
-		}
+		ParentBackend();
 	}
 	g_object_unref(s_clientConn.connectionPtr);
 }
@@ -148,14 +149,7 @@ void ChildProcess(void)
 	{
 		std::cout << "Conection created successfully, in " << getpid() <<" process(child)." << std::endl;
 
-		guint8 receivedMsg[LOCAL_BUFFER_SIZE];
-		gsize receivedBytes = 0;
-		ReadFromSocket(serverConn.istreamPtr , receivedMsg, LOCAL_BUFFER_SIZE, &receivedBytes);
-
-		if(0 != receivedBytes)
-		{
-			std::cout << "Message:" << std::endl << receivedMsg << std::endl <<" received." << std::endl;
-		}
+		ChildBackend();
 
 	}
 	g_object_unref(serverConn.connectionPtr);
@@ -299,7 +293,6 @@ GSocketConnection* CreateServer(void)
 	GError * lerror = NULL;
 	GSocketConnection* new_connectionPtr = NULL;
 	GSocketListener *lListnSocketPtr = g_socket_listener_new();
-
 	if(NULL == lListnSocketPtr)
 	{
 		g_error ("Could not create server socket.");
@@ -386,4 +379,79 @@ void ReadFromSocket(GInputStream* istreamptr, guint8* data, gsize size, gsize* r
 			*readBytes = (gsize)lreadBytes;
 		}
 	}
+}
+
+void ChildBackend(void)
+{
+	guint8 receivedMsg[LOCAL_BUFFER_SIZE];
+	gsize receivedBytes = 0;
+	ReadFromSocket(serverConn.istreamPtr , receivedMsg, LOCAL_BUFFER_SIZE, &receivedBytes);
+
+	if(0 != receivedBytes)
+	{
+		std::cout << "Message:" << std::endl << receivedMsg << std::endl <<" received." << std::endl;
+	}
+
+	GString* lsMsg = g_string_new((const gchar*) receivedMsg);
+
+	gchar lfind[2] = "0";
+	gchar lreplase = '\0';
+	for( gchar sym = '0'; sym <= '9'; sym++ )
+	{
+		lfind[0] = sym;
+		g_string_replace (lsMsg, lfind, &lreplase, 0);
+	}
+
+	if (WriteToSocket(serverConn.ostreamPtr, (guint8*)lsMsg->str, ((gsize)lsMsg->len)+1))
+	{
+		std::cout << "Server returned the message" << std::endl;
+	}
+
+	guint lNoOfFind;
+	gchar lfindStr[] = "UPD";
+
+	lNoOfFind = CountStrinStr(lsMsg, lfindStr);
+
+	if( WriteToSocket(serverConn.ostreamPtr, (guint8*)&lNoOfFind, sizeof(guint)) )
+	{
+		std::cout << "Server returned the message" << std::endl;
+	}
+}
+
+
+void ParentBackend(void)
+{
+	guint8 receivedMsg[LOCAL_BUFFER_SIZE];
+	gsize receivedBytes = 0;
+	GString* Msg = g_string_new((gchar*)MSG_TO_SEND);
+	if (WriteToSocket(s_clientConn.ostreamPtr, (guint8*)Msg->str, ((gsize)Msg->len)+1))
+	{
+		std::cout << "Client sent msg successfully" << std::endl;
+	}
+	
+
+	ReadFromSocket(s_clientConn.istreamPtr , receivedMsg, LOCAL_BUFFER_SIZE, &receivedBytes);
+	if(0 != receivedBytes)
+	{
+		std::cout << "Returned message is:" << std::endl << receivedMsg << std::endl;
+	}
+
+
+	guint lNoOfFind;
+	gchar lfind[] = "UPD";
+	lNoOfFind = CountStrinStr(Msg, lfind);
+	std::cout << "String \"upd\" was found: "<< lNoOfFind << " times" << std::endl;
+
+	ReadFromSocket(s_clientConn.istreamPtr , (guint8*)&lNoOfFind, sizeof(guint), &receivedBytes);
+	if(0 != receivedBytes)
+	{
+		std::cout << "Server found string \"upd\": "<< lNoOfFind << " times" << std::endl;
+	}
+
+}
+
+guint CountStrinStr(GString* str, gchar* find)
+{
+	str = g_string_ascii_up(str);
+	return g_string_replace (str, find, find, 0);
 }

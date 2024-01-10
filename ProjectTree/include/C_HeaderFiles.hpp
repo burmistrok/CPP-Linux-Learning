@@ -11,6 +11,10 @@
 #include"glib.h"
 #include"glib-object.h"
 #include"gio/gio.h"
+#include"gtk/gtk-a11y.h"
+#include"gtk/gtk.h"
+#include"gtk/gtkx.h"
+#include<sys/wait.h>
 
 #ifdef __cplusplus
    } // extern "C"

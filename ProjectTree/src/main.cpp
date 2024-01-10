@@ -6,7 +6,6 @@
 #define LOAD					(1000u)
 #define LOCAL_BUFFER_SIZE		(1000u)
 #define CUSTMPORT 				(9000u)
-#define CHILD_KEY 				"CHILD"
 #define HOSTNAME 				"127.0.0.1"
 #define MSG_TO_SEND 			"Hello from 2024, Happy new year!!! Update the status. Let's go on holidays to The Universitare Psychiatrische Dienste (UPD)."
 
@@ -40,12 +39,10 @@ typedef struct{
 }TS_PROCESS_CFG;
 
 /*Functions*/
-void MainProcess(char **argv );
+void MainProcess(void);
 void ChildProcess(void);
 void TestMultiThread(uint8_t useMutex);
-TE_GOAL FindGoal(const char* Flag);
 void Thread1_Func( gpointer data );
-gboolean CreateChildProcess(char **argv, GPid* cPidPtr);
 gboolean OpenSocket(TS_CONNECITON* connPtr);
 gboolean WriteToSocket(GOutputStream* ostreamptr, guint8* data, gsize size);
 void ReadFromSocket(GInputStream* istreamptr, guint8* data, gsize size, gsize* readBytes);
@@ -55,12 +52,19 @@ void ChildBackend(void);
 void ParentBackend(void);
 guint CountStrinStr(GString* str, gchar* find);
 
+static gboolean b_UseSocket = FALSE;
+static gboolean b_UseTread = FALSE;
+static gboolean b_UseTreadWMx = FALSE;
 
+static GOptionEntry entries[] =
+{
+	{ "UseSocket", 'S', 0, G_OPTION_ARG_NONE, &b_UseSocket, "Transmit data through sockets", NULL },
+	{ "UseThread", 'T', 0, G_OPTION_ARG_NONE, &b_UseTread, "The threads increment and print the same global variable", NULL },
+	{ "UseThreadWithMutex", 'M', 0, G_OPTION_ARG_NONE, &b_UseTread, "The threads increment and print the same global variable", NULL },
+	{ NULL }
+};
 
 /* Variabiles */
-const gchar ua8_ChildProcess[] = CHILD_KEY;
-const gchar ua8_Thread[] = "THREADS";
-const gchar ua8_ThreadMx[] = "THREADS_MUTEX";
 uint32_t SharedResurse = 0ul;
 GMutex *mutex;
 
@@ -84,53 +88,57 @@ TS_PROCESS_CFG MainProcessCfg =
 int main( int argc, char **argv )
 {
 	int RetVal = 0;
-	if(1 == argc)
-	{/* Main process */
-		MainProcess(argv);
-	}
-	else
+
+	GError *error = NULL;
+	GOptionContext *context;
+
+	context = g_option_context_new ("- test tree model performance");
+	g_option_context_add_main_entries (context, entries, "Test");
+	g_option_context_add_group (context, gtk_get_option_group (TRUE));
+	if (!g_option_context_parse (context, &argc, &argv, &error))
 	{
-		if(2 == argc)
-		{
-			TE_GOAL lcase = FindGoal(argv[1]);
-			switch(lcase)
-			{
-				case CHILD_PROCESS:
-					ChildProcess();
-				break;
+		g_error ("option parsing failed: %s\n", error->message);
+		RetVal = 1;
+	}
 
-				case TEST_THREAD:
-					TestMultiThread(0u);
-				break;
 
-				case TEST_THREADANDMUTEX:
-					TestMultiThread(1u);
-				break;
-
-				default:
-					std::cout << "Flag is not supported." << std::endl;
-					RetVal = 2;
+	if(0 == RetVal){
+		if(FALSE != b_UseSocket){
+			int chid = fork();
+			if(0 > chid){
+				g_error ("Error appear at fork processn");
+				RetVal = 2;
+			}
+			else if(0 == chid){
+				ChildProcess();
+			}
+			else{
+				std::cout << "The child pid is: " << chid << std::endl;
+				MainProcess();
+				int status;
+				wait(&status);
+				std::cout << "The result from " << chid << " is: " << status << std::endl;
 			}
 		}
-		else
-		{
-			std::cout << "Incorect no of flags." << std::endl;
-			RetVal = 1;
+		else if(FALSE != b_UseTread){
+			TestMultiThread(0u);
+		}
+		else if(FALSE != b_UseTreadWMx){
+			TestMultiThread(1u);
+		}
+		else{
+			g_error ("Incorect option transmited\n");
+			RetVal = 2;
 		}
 	}
 	std::cout << "Exit code from " << getpid() <<" process is "<< RetVal << std::endl;
 	return RetVal;
 }
 
-void MainProcess(char **argv )
+void MainProcess(void)
 {
 
 	std::cout << "Main " << getpid() <<" process was called" << std::endl;
-
-	if( CreateChildProcess(argv, &MainProcessCfg.childPid ))
-	{
-		std::cout << "Child process "<< MainProcessCfg.childPid << " successfully created." << std::endl;
-	}
 
 	if( OpenSocket(&s_clientConn) )
 	{
@@ -138,6 +146,7 @@ void MainProcess(char **argv )
 
 		ParentBackend();
 	}
+
 	g_object_unref(s_clientConn.connectionPtr);
 }
 
@@ -201,35 +210,6 @@ void Thread1_Func( gpointer data)
 	}
 }
 
-TE_GOAL FindGoal(const char* Flag)
-{
-	TE_GOAL retVal = UNSUPORTED_GOAL;
-	GString* sFlag = g_string_new((const gchar*) Flag);
-
-	sFlag = g_string_ascii_up(sFlag);
-
-	GString* ls_ChildProcess = g_string_new(ua8_ChildProcess);
-	GString* ls_Thread = g_string_new(ua8_Thread);
-	GString* ls_ThreadMx = g_string_new(ua8_ThreadMx);
-
-	if(g_string_equal(sFlag, ls_ChildProcess) )
-	{
-		retVal = CHILD_PROCESS;
-	}
-	else if( g_string_equal(sFlag, ls_Thread) )
-	{
-		retVal = TEST_THREAD;
-	}
-	else if( g_string_equal(sFlag, ls_ThreadMx) )
-	{
-		retVal = TEST_THREADANDMUTEX;
-	}
-	else {/* Misra */}
-
-	return retVal;
-
-}
-
 gboolean OpenSocket(TS_CONNECITON* connPtr)
 {
 
@@ -257,36 +237,6 @@ gboolean OpenSocket(TS_CONNECITON* connPtr)
 	}
 	return RetVal;
 }
-
-gboolean CreateChildProcess(char **argv, GPid* cPidPtr)
-{
-	gboolean RetVal = FALSE;
-
-	gchar * largv[3] = 
-	{
-		(gchar * )argv[0],
-		(gchar*)CHILD_KEY,
-		NULL
-	};
-	GPid childPid;
-	GError * lerror = NULL;
-	GSpawnFlags lflags = (GSpawnFlags)(G_SPAWN_CHILD_INHERITS_STDOUT | G_SPAWN_CHILD_INHERITS_STDERR | G_SPAWN_CHILD_INHERITS_STDIN);
-
-	if( g_spawn_async (NULL , largv, NULL, lflags, NULL, NULL, &childPid, &lerror) )
-	{
-		RetVal = TRUE;
-		*cPidPtr = childPid;
-	}
-	else
-	{
-		if(lerror != NULL)
-		{
-			g_error ("Spawning child failed: %s", lerror->message);
-		}
-	}
-	return RetVal;
-}
-
 
 GSocketConnection* CreateServer(void)
 {
@@ -329,7 +279,7 @@ GSocketConnection* Connect2Server(void)
 {
 	GError * lerror = NULL;
 	GSocketConnection* new_connectionPtr = NULL;
-	sleep(1);
+	//sleep(1);
 	GSocketClient* lClientSocketPtr  = g_socket_client_new ();
 	new_connectionPtr = g_socket_client_connect_to_host ( lClientSocketPtr, HOSTNAME, CUSTMPORT , NULL,  &lerror);
 	if(lerror != NULL)
@@ -394,6 +344,7 @@ void ChildBackend(void)
 
 	GString* lsMsg = g_string_new((const gchar*) receivedMsg);
 
+/*g_regex_replace */
 	gchar lfind[2] = "0";
 	gchar lreplase = '\0';
 	for( gchar sym = '0'; sym <= '9'; sym++ )
@@ -416,6 +367,8 @@ void ChildBackend(void)
 	{
 		std::cout << "Server returned the message" << std::endl;
 	}
+
+	g_string_free(lsMsg, TRUE);
 }
 
 
@@ -448,7 +401,10 @@ void ParentBackend(void)
 		std::cout << "Server found string \"upd\": "<< lNoOfFind << " times" << std::endl;
 	}
 
+	gchar *str = g_string_free_and_steal(Msg);
+	g_free (str);
 }
+
 
 guint CountStrinStr(GString* str, gchar* find)
 {

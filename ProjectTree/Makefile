@@ -11,7 +11,7 @@ INCLUDES        += -I${CURRENT_DIR}${PRJ_INCS_DIR}
 DEBUG_LEVEL         := 3
 OPTIMIZATION_LEVEL  := 0
 CFLAGS              := -O$(OPTIMIZATION_LEVEL) -g$(DEBUG_LEVEL) -Wall -std=c++17
-LDFLAGS	            := $(shell pkg-config --libs --cflags glib-2.0 gio-2.0 gio-unix-2.0 gobject-2.0)
+LDFLAGS	            := $(shell pkg-config --libs --cflags glib-2.0 gio-2.0 gio-unix-2.0 gobject-2.0 gtk+-3.0)
 
 ### Derived Variables ###
 CPP_SRC_FILES   := $(shell find -L $(PRJ_SOURCE_CODE) -type f -name "*.cpp"  -print)                # All C++ files

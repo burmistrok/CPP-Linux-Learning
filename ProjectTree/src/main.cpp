@@ -4,13 +4,12 @@
 /* Defines */
 #define LOAD					(1000u)
 #define LOCAL_BUFFER_SIZE		(1000u)
-#define CUSTMPORT 				(9000u)
-#define HOSTNAME 				"127.0.0.1"
+#define SOCKET_NAME				"Socket.test"
 #define MSG_TO_SEND 			"Hello from 2024, Happy new year!!! Update the status. Let's go on holidays to The Universitare Psychiatrische Dienste (UPD)."
 #define CANCELE_TIMEOUT			(10)
+#define NO_OF_ATTEMPTS			(100)
 
 /* User-defined data type  */
-
 typedef enum{
 	NONE = 0,
 	SERVER_SIDE,
@@ -41,11 +40,8 @@ void ChildBackend(void);
 void ParentBackend(void);
 guint CountStrinStr(GString* str, gchar* find);
 gpointer CancAtTimeout_thread (gpointer data);
-static char *socket_address_to_string (GSocketAddress *address);
-gpointer CancConAtTimeout_thread (gpointer data);
+void CleanSocket(void);
 
-
-static gboolean bConnetctionTimeout = FALSE;
 static gboolean b_UseSocket = FALSE;
 static gboolean b_UseTread = FALSE;
 static gboolean b_UseTreadWMx = FALSE;
@@ -141,8 +137,10 @@ void MainProcess(void)
 		ParentBackend();
 	}
 
-	g_socket_close(s_clientConn.connectionPtr, NULL);
-	g_object_unref(s_clientConn.connectionPtr);
+	if(G_IS_SOCKET(s_clientConn.connectionPtr)){
+		g_socket_close(s_clientConn.connectionPtr, NULL);
+		g_object_unref(s_clientConn.connectionPtr);
+	}
 }
 
 void ChildProcess(void)
@@ -156,8 +154,13 @@ void ChildProcess(void)
 		ChildBackend();
 
 	}
-	g_socket_close(serverConn.connectionPtr, NULL);
-	g_object_unref(serverConn.connectionPtr);
+
+	if(G_IS_SOCKET(serverConn.connectionPtr)){
+		g_socket_close(serverConn.connectionPtr, NULL);
+		g_object_unref(serverConn.connectionPtr);
+
+		CleanSocket();
+	}
 }
 
 void TestMultiThread(uint8_t useMutex)
@@ -237,16 +240,13 @@ GSocket* CreateServer(void)
 	GError *lerror = NULL;
 	GCancellable *lcancellablePtr = NULL;
 	GSocketAddress *lSocketAdrPtr = NULL;
-	GSocketAddress *lClinetAdrPtr = NULL;
-	GInetAddress *lInetAdrPtr = NULL;
 	GSocket* lnewsocketptr = NULL;
-	GSocket* lsocketptr = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, &lerror);
+	GSocket* lsocketptr = g_socket_new (G_SOCKET_FAMILY_UNIX, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT, &lerror);
 	if(NULL != lerror){
 		g_warning ("Could not create server socket %s", lerror->message);
 	}
 	else{
-		lInetAdrPtr = g_inet_address_new_any(G_SOCKET_FAMILY_IPV4);
-		lSocketAdrPtr = g_inet_socket_address_new(lInetAdrPtr, CUSTMPORT);
+		lSocketAdrPtr = g_unix_socket_address_new (SOCKET_NAME);
 		g_clear_error (&lerror);
 		/* normally allow_reuse should be TRUE for server sockets in order to not get G_IO_ERROR_ADDRESS_IN_USE*/
 		if( FALSE == g_socket_bind (lsocketptr, lSocketAdrPtr, TRUE, &lerror)){
@@ -279,20 +279,14 @@ GSocket* CreateServer(void)
 					}
 					else{
 						g_clear_error (&lerror);
-						lClinetAdrPtr = g_socket_get_remote_address (lnewsocketptr, &lerror);
 						if(NULL != lerror){
 							g_warning("Error getting remote address: %s\n", lerror->message);
 						}
-						else{
-							std::cout << "Got a new connection from(server): " << socket_address_to_string(lClinetAdrPtr) << std::endl;
-						}
-						g_object_unref(lClinetAdrPtr);
 					}
 				}
 			}
 				
 		}
-		g_object_unref(lInetAdrPtr);
 	}
 	g_object_unref (G_OBJECT (lsocketptr));
 	return lnewsocketptr;
@@ -301,17 +295,15 @@ GSocket* CreateServer(void)
 
 GSocket* Connect2Server(void)
 {
+	int l_ConnectionAttemps = NO_OF_ATTEMPTS;
 	GSocketAddress *lClinetAdrPtr = NULL;
-	GInetAddress *lInetAdrPtr = NULL;
 	GSocket* lnewsocketptr = NULL;
 	GError * lerror = NULL;
 	gboolean lbConnected = FALSE;
-	lInetAdrPtr = g_inet_address_new_from_string(HOSTNAME);
-	lClinetAdrPtr = g_inet_socket_address_new (lInetAdrPtr, CUSTMPORT);
-	g_thread_new(NULL, CancConAtTimeout_thread, NULL);
-	while( (FALSE == bConnetctionTimeout) && (FALSE == lbConnected) )
+	lClinetAdrPtr = g_unix_socket_address_new (SOCKET_NAME);
+	while( (0 < l_ConnectionAttemps) && (FALSE == lbConnected) )
 	{
-		lnewsocketptr = g_socket_new (G_SOCKET_FAMILY_IPV4, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP, &lerror);
+		lnewsocketptr = g_socket_new (G_SOCKET_FAMILY_UNIX, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT, &lerror);
 		if(NULL != lerror){
 			g_warning ("Could not create client socket %s", lerror->message);
 		}else{
@@ -331,12 +323,13 @@ GSocket* Connect2Server(void)
 			}
 			else{
 				lbConnected = TRUE;
-				std::cout << "Got a new connection from(client): " << socket_address_to_string(lClinetAdrPtr) << std::endl;
 			}
 		}
 
+		if(0 < l_ConnectionAttemps){
+			l_ConnectionAttemps--;
+		}
 	}
-	g_object_unref(lInetAdrPtr);
 	return lnewsocketptr;
 }
 
@@ -473,25 +466,14 @@ gpointer CancAtTimeout_thread (gpointer data)
   return NULL;
 }
 
-gpointer CancConAtTimeout_thread (gpointer data)
+void CleanSocket(void)
 {
-  std::cout << "Thread2 called" << std::endl;
-  g_usleep (G_USEC_PER_SEC*CANCELE_TIMEOUT);
-  std::cout << "Timeout2 ocurred" << std::endl;
-  bConnetctionTimeout = TRUE;
-  return NULL;
-}
+	if( g_file_test(SOCKET_NAME, G_FILE_TEST_EXISTS)){
+		g_warning ("Exists");
+		unlink (SOCKET_NAME);
+	} 
+	else{
+		g_warning ("Do not exist");
+	}
 
-static char *socket_address_to_string (GSocketAddress *address)
-{
-  GInetAddress *inet_address;
-  char *str, *res;
-  int port;
-
-  inet_address = g_inet_socket_address_get_address (G_INET_SOCKET_ADDRESS (address));
-  str = g_inet_address_to_string (inet_address);
-  port = g_inet_socket_address_get_port (G_INET_SOCKET_ADDRESS (address));
-  res = g_strdup_printf ("%s:%d", str, port);
-  g_free (str);
-  return res;
 }

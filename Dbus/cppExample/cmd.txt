@@ -1,0 +1,4 @@
+g++ -o dbus_server $(pkg-config --cflags --libs giomm-2.4 glibmm-2.4) dbus_server.cpp
+./dbus_server
+g++ -o dbus_client $(pkg-config --cflags --libs giomm-2.4 glibmm-2.4) dbus_client.cpp
+./dbus_client
